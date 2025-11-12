@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenticED - Benefits Discovery</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Configuration - Auto-detects local vs production
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3002'  // Local development
+            : 'https://agenticed-benefits-mcp.onrender.com';  // Production - UPDATE THIS with your Render URL
+
+        const translations = {
+            en: {
+                notification: "New Benefits Discovered!",
+                greeting: "Maria, we have important news for you",
+                discovered: "Based on recent changes to your household, we scanned 47 benefit programs and found",
+                eligible: "you're eligible for",
+                worth: "worth",
+                annually: "annually",
+                viewBenefits: "View Your Benefits",
+                talkToAgent: "Talk to Agent",
+                howItWorks: "How It Works",
+                detected: "We detected changes",
+                employment: "Employment status changed to unemployed",
+                income: "Monthly income reduced to $2,400",
+                scanned: "Automatically scanned programs",
+                federal: "Federal programs",
+                state: "State programs",
+                city: "City programs",
+                education: "Education & workforce programs",
+                calculated: "Calculated your eligibility",
+                qualified: "programs you qualify for",
+                ready: "Applications ready to review",
+                prefilled: "Pre-filled with your information",
+                timeToComplete: "15 minutes to review and submit",
+                categories: "Benefits by Category",
+                monthly: "Monthly",
+                annual: "Annual",
+                total: "Total Annual Benefits",
+                langSwitch: "Español",
+                chatWithAgent: "Chat with Your Benefits Agent",
+                typeMessage: "Ask me anything about your benefits...",
+                send: "Send",
+                toolCalls: "Agent Actions",
+                household: "Your Household",
+                people: "people",
+                income: "Monthly Income",
+                location: "Location",
+                status: "Status",
+                loading: "Processing...",
+                
+                // Programs
+                snap: "SNAP Food Assistance",
+                wic: "WIC Nutrition",
+                medicaid: "MassHealth",
+                section8: "Section 8 Housing",
+                tafdc: "TAFDC Cash Aid",
+                fuelAssist: "Fuel Assistance",
+                connector: "ConnectorCare",
+                mrvp: "Rental Voucher",
+                summerYouth: "Summer Youth Jobs",
+                afterSchool: "After-School Programs",
+                workforce: "Job Training",
+                ccTuition: "College Tuition Waiver"
+            },
+            es: {
+                notification: "¡Nuevos Beneficios Descubiertos!",
+                greeting: "Maria, tenemos noticias importantes para ti",
+                discovered: "Basado en cambios recientes en tu hogar, escaneamos 47 programas de beneficios y encontramos",
+                eligible: "eres elegible para",
+                worth: "por un valor de",
+                annually: "anualmente",
+                viewBenefits: "Ver Tus Beneficios",
+                talkToAgent: "Hablar con el Agente",
+                howItWorks: "Cómo Funciona",
+                detected: "Detectamos cambios",
+                employment: "Estado de empleo cambió a desempleada",
+                income: "Ingreso mensual reducido a $2,400",
+                scanned: "Escaneamos programas automáticamente",
+                federal: "Programas federales",
+                state: "Programas estatales",
+                city: "Programas de la ciudad",
+                education: "Educación y desarrollo laboral",
+                calculated: "Calculamos tu elegibilidad",
+                qualified: "programas para los que calificas",
+                ready: "Aplicaciones listas para revisar",
+                prefilled: "Pre-llenadas con tu información",
+                timeToComplete: "15 minutos para revisar y enviar",
+                categories: "Beneficios por Categoría",
+                monthly: "Mensual",
+                annual: "Anual",
+                total: "Total de Beneficios Anuales",
+                langSwitch: "English",
+                chatWithAgent: "Chatea con Tu Agente de Beneficios",
+                typeMessage: "Pregúntame cualquier cosa sobre tus beneficios...",
+                send: "Enviar",
+                toolCalls: "Acciones del Agente",
+                household: "Tu Hogar",
+                people: "personas",
+                income: "Ingreso Mensual",
+                location: "Ubicación",
+                status: "Estado",
+                loading: "Procesando...",
+                
+                // Programs
+                snap: "Asistencia de Alimentos SNAP",
+                wic: "Nutrición WIC",
+                medicaid: "MassHealth",
+                section8: "Vivienda Section 8",
+                tafdc: "Ayuda en Efectivo TAFDC",
+                fuelAssist: "Asistencia de Combustible",
+                connector: "ConnectorCare",
+                mrvp: "Cupones de Alquiler",
+                summerYouth: "Empleos de Verano",
+                afterSchool: "Programas Después de Escuela",
+                workforce: "Capacitación Laboral",
+                ccTuition: "Exención de Matrícula"
+            }
+        };
+
+        function App() {
+            const [language, setLanguage] = useState('en');
+            const [view, setView] = useState('notification'); // notification, benefits, chat
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [toolCalls, setToolCalls] = useState([]);
+            const [sessionId] = useState(`session-${Date.now()}`);
+            const [householdData, setHouseholdData] = useState(null);
+
+            const t = translations[language];
+
+            useEffect(() => {
+                // Load household data on mount
+                fetchHouseholdData();
+            }, []);
+
+            const fetchHouseholdData = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/household/PARENT_001`);
+                    const data = await response.json();
+                    setHouseholdData(data);
+                } catch (error) {
+                    console.error('Error fetching household data:', error);
+                }
+            };
+
+            const sendMessage = async (message) => {
+                if (!message.trim() && !message) return;
+
+                const userMessage = message || input;
+                setInput('');
+                setLoading(true);
+
+                // Add user message to UI
+                setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: userMessage,
+                            sessionId: sessionId,
+                            householdId: 'PARENT_001',
+                            language: language
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    // Add assistant response
+                    setMessages(prev => [...prev, { 
+                        role: 'assistant', 
+                        content: data.message 
+                    }]);
+
+                    // Update tool calls
+                    if (data.toolCalls && data.toolCalls.length > 0) {
+                        setToolCalls(prev => [...prev, ...data.toolCalls]);
+                    }
+
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    setMessages(prev => [...prev, { 
+                        role: 'assistant', 
+                        content: 'Sorry, I encountered an error. Please try again.' 
+                    }]);
+                }
+
+                setLoading(false);
+            };
+
+            const toggleLanguage = () => {
+                setLanguage(language === 'en' ? 'es' : 'en');
+            };
+
+            const startConversation = async () => {
+                setView('chat');
+                // Automatically trigger discovery conversation
+                await sendMessage("Tell me what benefits you discovered for me");
+            };
+
+            // Notification Landing Page
+            if (view === 'notification') {
+                return (
+                    <div className="min-h-screen bg-gray-50">
+                        {/* Header */}
+                        <div className="bg-white border-b border-gray-200">
+                            <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                                        AE
+                                    </div>
+                                    <span className="font-semibold text-gray-900">AgenticED</span>
+                                </div>
+                                <button 
+                                    onClick={toggleLanguage}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                                >
+                                    {t.langSwitch}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Notification Banner */}
+                        <div className="gradient-bg text-white py-3">
+                            <div className="max-w-5xl mx-auto px-6">
+                                <div className="flex items-center justify-center space-x-2">
+                                    <div className="w-2 h-2 bg-white rounded-full pulse-slow"></div>
+                                    <span className="font-semibold">{t.notification}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="max-w-5xl mx-auto px-6 py-12">
+                            {/* Hero Section */}
+                            <div className="text-center mb-12 slide-up">
+                                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                                    {t.greeting}
+                                </h1>
+                                <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                                    {t.discovered}
+                                </p>
+                            </div>
+
+                            {/* Big Numbers */}
+                            <div className="bg-white rounded-2xl card-shadow p-12 mb-8 text-center slide-up" style={{animationDelay: '0.1s'}}>
+                                <div className="mb-6">
+                                    <div className="text-6xl font-bold text-purple-600 mb-2">14</div>
+                                    <div className="text-lg text-gray-600">{t.eligible}</div>
+                                </div>
+                                <div className="border-t border-gray-200 pt-6">
+                                    <div className="text-5xl font-bold text-gray-900 mb-2">$58,980</div>
+                                    <div className="text-lg text-gray-600">{t.worth} • {t.annually}</div>
+                                </div>
+                            </div>
+
+                            {/* CTAs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12 slide-up" style={{animationDelay: '0.2s'}}>
+                                <button
+                                    onClick={() => setView('benefits')}
+                                    className="py-4 px-8 bg-purple-600 text-white rounded-xl font-semibold text-lg hover:bg-purple-700 transition shadow-lg"
+                                >
+                                    {t.viewBenefits}
+                                </button>
+                                <button
+                                    onClick={startConversation}
+                                    className="py-4 px-8 bg-white text-purple-600 rounded-xl font-semibold text-lg hover:bg-gray-50 transition border-2 border-purple-600"
+                                >
+                                    {t.talkToAgent}
+                                </button>
+                            </div>
+
+                            {/* How It Works */}
+                            <div className="bg-white rounded-2xl card-shadow p-8 slide-up" style={{animationDelay: '0.3s'}}>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{t.howItWorks}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <span className="text-2xl">🔍</span>
+                                        </div>
+                                        <h3 className="font-semibold text-gray-900 mb-2">1. {t.detected}</h3>
+                                        <p className="text-sm text-gray-600">{t.employment}</p>
+                                        <p className="text-sm text-gray-600">{t.income}</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <span className="text-2xl">📋</span>
+                                        </div>
+                                        <h3 className="font-semibold text-gray-900 mb-2">2. {t.scanned}</h3>
+                                        <p className="text-sm text-gray-600">12 {t.federal}</p>
+                                        <p className="text-sm text-gray-600">18 {t.state}</p>
+                                        <p className="text-sm text-gray-600">9 {t.city}</p>
+                                        <p className="text-sm text-gray-600">8 {t.education}</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <span className="text-2xl">✅</span>
+                                        </div>
+                                        <h3 className="font-semibold text-gray-900 mb-2">3. {t.calculated}</h3>
+                                        <p className="text-sm text-gray-600">14 {t.qualified}</p>
+                                        <p className="text-sm text-gray-600">{t.prefilled}</p>
+                                        <p className="text-sm text-gray-600">{t.timeToComplete}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Benefits Detail View
+            if (view === 'benefits') {
+                const benefitsByCategory = {
+                    federal: [
+                        { name: t.snap, monthly: 740, annual: 8880 },
+                        { name: t.wic, monthly: 47, annual: 564 },
+                        { name: t.medicaid, monthly: 850, annual: 10200 },
+                        { name: t.section8, monthly: 900, annual: 10800 }
+                    ],
+                    state: [
+                        { name: t.tafdc, monthly: 578, annual: 6936 },
+                        { name: t.fuelAssist, monthly: 100, annual: 1200 },
+                        { name: t.connector, monthly: 350, annual: 4200 },
+                        { name: t.mrvp, monthly: 600, annual: 7200 }
+                    ],
+                    city: [
+                        { name: t.summerYouth, monthly: 0, annual: 2000 },
+                        { name: t.afterSchool, monthly: 125, annual: 1500 }
+                    ],
+                    education: [
+                        { name: t.workforce, monthly: 0, annual: 500 },
+                        { name: t.ccTuition, monthly: 0, annual: 5000 }
+                    ]
+                };
+
+                const totalAnnual = Object.values(benefitsByCategory)
+                    .flat()
+                    .reduce((sum, b) => sum + b.annual, 0);
+
+                return (
+                    <div className="min-h-screen bg-gray-50">
+                        {/* Header */}
+                        <div className="bg-white border-b border-gray-200">
+                            <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+                                <button 
+                                    onClick={() => setView('notification')}
+                                    className="text-sm text-gray-600 hover:text-gray-900"
+                                >
+                                    ← Back
+                                </button>
+                                <button 
+                                    onClick={toggleLanguage}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                                >
+                                    {t.langSwitch}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="gradient-bg text-white py-8">
+                            <div className="max-w-6xl mx-auto px-6">
+                                <h1 className="text-3xl font-bold mb-2">{t.categories}</h1>
+                                <div className="text-lg">{t.total}: <span className="font-bold">${totalAnnual.toLocaleString()}</span></div>
+                            </div>
+                        </div>
+
+                        {/* Benefits Grid */}
+                        <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+                            {Object.entries(benefitsByCategory).map(([category, benefits]) => (
+                                <div key={category}>
+                                    <h2 className="text-xl font-bold text-gray-900 mb-4 capitalize">
+                                        {t[category]}
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {benefits.map((benefit, idx) => (
+                                            <div key={idx} className="bg-white p-6 rounded-xl card-shadow">
+                                                <h3 className="font-semibold text-gray-900 mb-2">{benefit.name}</h3>
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        {benefit.monthly > 0 && (
+                                                            <div className="text-sm text-gray-600">
+                                                                {t.monthly}: <span className="font-semibold">${benefit.monthly}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="text-sm text-gray-600">
+                                                            {t.annual}: <span className="font-semibold">${benefit.annual.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={startConversation}
+                                                        className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
+                                                    >
+                                                        {t.apply}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* CTA */}
+                        <div className="max-w-6xl mx-auto px-6 pb-12">
+                            <button
+                                onClick={startConversation}
+                                className="w-full py-4 bg-purple-600 text-white rounded-xl font-semibold text-lg hover:bg-purple-700 transition"
+                            >
+                                {t.talkToAgent}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Chat View
+            return (
+                <div className="min-h-screen bg-gray-50 flex">
+                    {/* Main Chat Area */}
+                    <div className="flex-1 flex flex-col">
+                        {/* Header */}
+                        <div className="bg-white border-b border-gray-200 px-6 py-4">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-xl font-bold text-gray-900">{t.chatWithAgent}</h1>
+                                    {householdData && (
+                                        <p className="text-sm text-gray-600">
+                                            {householdData.parent.name} • {householdData.householdSize} {t.people} • ${householdData.monthlyIncome} {t.monthly}
+                                        </p>
+                                    )}
+                                </div>
+                                <button 
+                                    onClick={toggleLanguage}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                                >
+                                    {t.langSwitch}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {messages.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-2xl px-6 py-4 rounded-2xl ${
+                                        msg.role === 'user' 
+                                            ? 'bg-purple-600 text-white' 
+                                            : 'bg-white text-gray-900 card-shadow'
+                                    }`}>
+                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {loading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-white px-6 py-4 rounded-2xl card-shadow">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                            <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Input */}
+                        <div className="bg-white border-t border-gray-200 p-6">
+                            <div className="flex space-x-4">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && !loading && sendMessage()}
+                                    placeholder={t.typeMessage}
+                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                    disabled={loading}
+                                />
+                                <button
+                                    onClick={() => sendMessage()}
+                                    disabled={loading || !input.trim()}
+                                    className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {t.send}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sidebar - Tool Calls */}
+                    <div className="w-96 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">{t.toolCalls}</h2>
+                        <div className="space-y-4">
+                            {toolCalls.map((call, idx) => (
+                                <div key={idx} className="bg-gray-50 rounded-lg p-4 text-sm">
+                                    <div className="font-semibold text-purple-600 mb-2">{call.tool}</div>
+                                    <div className="text-xs text-gray-600 mb-2">
+                                        <div className="font-medium mb-1">Input:</div>
+                                        <pre className="whitespace-pre-wrap">{JSON.stringify(call.input, null, 2)}</pre>
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                        <div className="font-medium mb-1">Result:</div>
+                                        <pre className="whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                            {JSON.stringify(call.result, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+                            ))}
+                            {toolCalls.length === 0 && (
+                                <div className="text-gray-500 text-sm text-center py-8">
+                                    Tool calls will appear here as the agent works
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
